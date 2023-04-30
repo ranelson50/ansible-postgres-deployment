@@ -1,0 +1,6 @@
+---
+- name: postgre post validation
+  hosts: '{{ host }}'
+  become: true
+  roles:
+    - postgresql-postvalidation

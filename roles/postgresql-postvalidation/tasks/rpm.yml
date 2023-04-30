@@ -1,0 +1,5 @@
+---
+- name:  check for  postgresql packages
+  shell: rpm -qa 'postgresql{{ postgres_version |replace('.','') }}-server*'
+  changed_when: False
+  register:  postgresql_package

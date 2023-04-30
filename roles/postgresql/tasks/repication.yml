@@ -1,0 +1,56 @@
+---
+#- name: set master ip fact
+#  set_fact:
+#    postgres_master_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+#  delegate_to: "localhost"
+#  delegate_facts: True
+#  when: inventory_hostname in groups['MASTER_HOST']
+#
+#- name: Print postgres_master_ip
+#  debug:
+#    msg: "Master IP is {{ hostvars['localhost']['postgres_master_ip'] }}"
+#  run_once: true
+#  when: inventory_hostname in groups['MASTER_HOST']
+#
+#- name: assign server_id for slave host each host
+#  set_fact:
+#    slave_name: "slave-{{ groups.SLAVE_HOST.index(inventory_hostname) | int +1  }}"
+#  when: inventory_hostname in groups["SLAVE_HOST"]
+#
+#- name: Print slave_name
+#  debug:
+#    msg: "slave name is {{ slave_name }}"
+#  when: inventory_hostname in groups['SLAVE_HOST']
+#
+#- name: Generating RSA key for postgres
+#  user:
+#    name: postgres
+#    generate_ssh_key: yes
+#
+## replace with ssh_key: "{{ lookup('file', {{ postgres_home }/.ssh/id_rsa.pub) }}"
+#- name: Slurp ssh public key
+#  command: cat /var/lib/pgsql/.ssh/id_rsa.pub
+#  register: ssh_key
+#  changed_when: false
+#- debug:
+#    var: |
+#      ssh_key.stdout
+#
+#- name: Install  public key
+#  authorized_key:
+#    user: postgres
+#    key: "{{ item[0] }}"
+#    state: present
+#  delegate_to: "{{ item[1] }}"
+#  with_nested:
+#  - "{{ ssh_key.stdout }}"
+#  - "{{ groups['SLAVE_HOST'] }}"
+
+
+- name: Configure Master
+  include_tasks: master.yml
+  when: inventory_hostname in groups['MASTER_HOST'] and inventory_hostname in groups[cluster_name]
+
+- name: Configure Slaves
+  include_tasks: slave.yml
+  when: inventory_hostname in groups['SLAVE_HOST'] and inventory_hostname in groups[cluster_name]

@@ -1,0 +1,6 @@
+---
+- name: postgresql backup db
+  hosts: '{{ host }}'
+  roles:
+    - postgresql-backup-db
+

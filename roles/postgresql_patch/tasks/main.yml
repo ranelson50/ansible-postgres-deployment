@@ -1,0 +1,142 @@
+---
+# tasks file for postgresql-patch
+
+- name: show postgres
+  shell: yum list installed | grep postgres | awk '{print $2}' | cut -d'-' -f1 | head -n 1
+  register: output
+  changed_when: False
+
+- name:  installed version when 9.6 version
+  set_fact:
+          installed_version: "{{ output.stdout.split('.')[0:2] | join('.') }}"
+  when: version == '9.6'
+
+- name:  installed version when not 9.6
+  set_fact:
+        installed_version: "{{ output.stdout.split('.')[0] }}"
+  when: version != '9.6'
+
+- name: fail if major version is different 
+  fail:
+   msg: server major and minor version must be the same
+  when: version == '9.6' and version != installed_version
+
+- name: fail if major version is different
+  fail:
+    msg: server major version must be the same 
+  when:  version != '9.6' and version != installed_version
+
+
+
+- name: Patch progresql status
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "PostgreSQL Patching"
+    task_id: "{{ ticket_ref }}"
+    task_status: "IN_PROGRESS"
+    task_message: "Install Patch"
+    standard_task_id: "{{ standard_task_id }}"
+  tags:
+  - apex_api
+
+- name: install postgres rpm specific version
+  set_fact:
+       postgres_server_package: "postgresql{{ version | replace('.','') }}-server-{{ version  }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
+       postgres_libs_package: "postgresql{{ version | replace('.','') }}-libs-{{ version  }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
+       postgres_devel_package: "postgresql{{ version | replace('.','') }}-devel-{{ version }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
+       postgres_contrib_package: "postgresql{{ version | replace('.','') }}-contrib-{{ version }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
+       postgres_package: "postgresql{{ version | replace('.','') }}-{{ version }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
+  when: ansible_os_family|lower == "redhat"
+
+- name: stop current server
+  service: 
+    name: "postgresql-{{ version }}"
+    state: stopped
+
+- name: Save current systemd file
+  copy:
+      src: "/usr/lib/systemd/system/postgresql-{{ version }}.service"
+      dest: /tmp
+      remote_src: yes
+
+- name: remove old postgres
+  yum :
+    name: "{{ postgres_packages }}"
+    state: absent
+
+- name: Patch postgresql status
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "PostgreSQL Patching"
+    task_id: "{{ ticket_ref }}"
+    task_status: "INSTALLING PACKAGES"
+    task_message: "Install Patch"
+    standard_task_id: "{{ standard_task_id }}"
+  tags:
+  - apex_api
+     
+- name: Install  postgres packages
+  yum:
+    name:
+     - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_server_package  }}"
+     - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_contrib_package  }}"
+     - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_devel_package  }}"
+     - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_libs_package  }}"
+     - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_package  }}"
+    state: present
+
+- name: Install python packages
+  yum: 
+    name:
+    - python-psycopg2
+    - python-pip 
+    - libselinux-python
+    state: present
+
+- name: install psycopg2 and psycopg2-binary python modules
+  pip:
+    name:
+      - psycopg2
+      - psycopg2-binary
+  become: True
+
+- name: Ansible copy files remote to remote
+  copy:
+      src: "/tmp/postgresql-{{ version }}.service"
+      dest: "/usr/lib/systemd/system/postgresql-{{ version }}.service"
+      remote_src: yes
+
+- name: start updated server
+  service: 
+    name: "postgresql-{{ version }}"
+    state: started
+  
+
+- name: send updated database server version to DCC API
+  import_role: 
+        name: postgresql-catalog
+  vars:
+    catalog_dest_type: "DB_CATALOG_DETAIL_UPGRADE"
+
+
+- name: Patch progresql status
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "PostgreSQL Patching"
+    task_id: "{{ ticket_ref }}"
+    task_status: "SUCCESS"
+    task_message: "server patched to specified version"
+    standard_task_id: "{{ standard_task_id }}"
+  tags:
+  - apex_api
+
+ 
