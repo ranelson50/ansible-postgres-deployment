@@ -1,0 +1,6 @@
+---
+- name: postgresql create db
+  hosts: '{{ host }}'
+  roles:
+    - postgresql-create-db
+

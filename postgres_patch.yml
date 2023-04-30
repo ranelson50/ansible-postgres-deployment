@@ -1,0 +1,6 @@
+---
+- name: insert host
+  hosts: '{{ host }}'
+  become: true
+  roles:
+  - postgresql_patch

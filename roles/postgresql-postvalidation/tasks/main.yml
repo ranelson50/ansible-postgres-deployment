@@ -1,0 +1,148 @@
+---
+- name: Load variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}-{{ ansible_distribution_version }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution|lower }}.yml"
+        - "{{ ansible_os_family|lower }}-{{ ansible_distribution_major_version }}.yml"
+        - "{{ ansible_os_family|lower }}.yml"
+        - defaults.yml
+
+# tasks file for postgresql-postvalidation
+- name: host checklist post update for  provisioning validation
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "Post Validation"
+    task_id: "{{ ticket_ref }}"
+    task_status: "STARTED"
+    task_message: "Post validations for Provisioning on {{ ansible_hostname }} "
+    standard_task_id: "{{ standard_task_id }}"
+  tags:
+  - apex_api
+
+- include_tasks: rpm.yml
+  when: ansible_os_family in  ["RedHat" , "Suse"]
+- include_tasks: deb.yml
+  when: ansible_os_family == "Debian" 
+
+- block:
+  - name: get facts from running database
+    become: true
+    become_user: postgres
+    postgresql_info:
+          filter: "version,settings"
+    register: postgres_fact_output
+
+  - set_fact: 
+         postgres_data_directory: "{{ postgres_fact_output['settings']['data_directory']['setting'] }}"
+
+  - set_fact:
+        postgres_config_file: "{{ postgres_data_directory }}/postgresql.conf"
+
+  - set_fact:
+        postgres_hba_file: "{{ postgres_data_directory }}/pg_hba.conf"
+        
+        
+
+- name:  check   if {{ postgres_hba_file }} exists  
+  stat:
+    path: "{{ postgres_hba_file }}"
+  register: hba_file
+
+- name:  check   if {{ postgres_config_file }} exists  
+  stat:
+    path: "{{ postgres_config_file }}"
+  register: config_file
+
+- name: generate checklist output
+  set_fact:
+    checklist:
+    - check_name: "postgresql  packages"
+      expected_value: present
+      actual_value: "present : {{  postgresql_package.stdout }}"
+      status: "{% if  postgresql_package.stdout =='' -%}FAILED
+              {%- else -%}PASSED
+              {%- endif %}"
+    - check_name: "hba file"
+      expected_value: present
+      actual_value: "{{ 'present' if hba_file.stat.exists else 'absent' }}"
+      status: "{% if hba_file.stat.exists -%}PASSED
+              {%- else -%}FAILED
+              {%- endif %}"
+    - check_name: "config file"
+      expected_value: present
+      actual_value: "{{ 'present' if config_file.stat.exists else 'absent' }}"
+      status: "{% if config_file.stat.exists -%}PASSED
+              {%- else -%}FAILED
+              {%- endif %}"
+
+- name: show check list
+  debug:
+    var: checklist
+
+- name: store the result in a json
+  copy:
+    dest:  "/tmp/{{ ansible_hostname }}_postvalidaton_result.json"
+    content: "{{ checklist }}"
+
+- name: host checklist post update for  provisioning validation
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "Post Validation"
+    task_id: "{{ ticket_ref }}"
+    task_status: "FAILED"
+    task_message: "Post validations for Provisioning on {{ ansible_hostname }} "
+    standard_task_id: "{{ standard_task_id }}"
+  when: checklist | json_query('[?status == `FAILED`]') | length > 1
+  tags:
+  - apex_api
+
+- name: host checklist post update for  provisioning validation
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_all.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "Post Validation"
+    task_id: "{{ ticket_ref }}"
+    task_status: "SUCCESSFUL"
+    task_message: "Post validations for Provisioning on {{ ansible_hostname }} "
+    standard_task_id: "{{ standard_task_id }}"
+  when: checklist | json_query('[?status == `FAILED`]') | length == 0
+  tags:
+  - apex_api
+
+- name: db checklist status file upload for prevalistion 
+  import_role:
+    name: dbaas_api_services
+    tasks_from: db_checklist_status_file.yml
+  vars:
+    task_key: "{{ ansible_hostname }}"
+    task_area: "Post Validation"
+    task_id: "{{ ticket_ref }}"
+    task_status: "Upload Post Validation checklist"
+    task_message: "Post Validation checklist {{ ansible_hostname }} "
+    file_mimetype: "text/plain"
+    record_type: "file_upload"
+    logfile_path: "/tmp/{{ ansible_hostname }}_postvalidaton_result.json"
+    standard_task_id: "{{ standard_task_id_val }}"
+  tags:
+  - apex_api
+
+- name: Check for Precheck Failures
+  fail:
+    msg: "{% if checklist | json_query('[?status == `FAILED`]') | length == 1 -%}You have 1 failed check
+          {%- else -%}You have {{ checklist | json_query('[?status == `FAILED`]') | length }} failed checks
+          {%- endif %}"
+  when: checklist | json_query('[?status == `FAILED`]') | length > 0
+  tags:
+    - postcheck_fail
+    - postval_fail

@@ -1,0 +1,5 @@
+---
+# defaults file for postgresql-prevalidation
+cpu_count_prereq: '1'
+core_count_prereq: '1'
+ram_prereq_mb: 3780

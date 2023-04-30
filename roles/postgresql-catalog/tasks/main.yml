@@ -1,0 +1,19 @@
+---
+# tasks file for api_catalog
+- name: "Get postgres settings"
+  become: true
+  become_user: postgres
+  postgresql_info:
+      filter:  "settings"
+  register: postgres_settings
+
+- name: "insert the {{ catalog_dest_type }} catalog"
+  import_role:
+    name: dbaas_api_services
+    tasks_from: catalog_process_api.yml
+  vars:
+    catalog_dest: "{{ catalog_dest_type | default('DB_CATALOG_TBL') }}"
+    json_catalog: "{{ lookup('template', 'catalog.j2') }}"
+    settings: "{{ postgres_settings.settings }}"
+  tags:
+  - apex_api

@@ -1,0 +1,7 @@
+
+---
+- name: postgresql pre validation validation
+  hosts: '{{ host }}'
+  become: true
+  roles:
+    - postgresql-prevalidation

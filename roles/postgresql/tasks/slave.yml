@@ -1,0 +1,90 @@
+---
+- name: Stop postgres service.
+  service:
+    name: "{{ postgres_service_name }}"
+    state: stopped
+
+- name: delete data directory created during 
+  become: true
+  file: 
+      path: "{{ postgres_data_directory }}"
+      state:  absent
+
+- name: create data directory a fresh 
+  become: true
+  file: 
+      path: "{{ postgres_data_directory }}"
+      owner: postgres
+      group: postgres
+      mode: '700'
+      state:  directory
+
+- name: perform base backup from master
+  become: true
+  become_user: postgres
+  shell: "PGPASSWORD={{ postgres_replica_pass }} /usr/pgsql-{{ version }}/bin/pg_basebackup -h {{ hostvars[item]['ansible_facts']['default_ipv4']['address'] }}  -U replicator -p 5432 -D {{ postgres_data_directory }} --slot={{ inventory_hostname | lower | replace('-','_') }} -X stream -P"
+  changed_when: false
+  with_items: "{{ groups['MASTER_HOST'] }}"     
+  when: item in groups[cluster_name] 
+
+
+- name: postgres data directory and edit postgresql.conf file on the slave server.
+  lineinfile:
+    dest: "{{ postgres_config_file }}"
+    regexp: '^hot_standby =.*'
+    line: 'hot_standby = on'
+  become: True
+  
+
+- name: Create new 'recovery.conf' file
+  copy:
+    content: ""
+    dest: "{{ postgres_data_directory }}/recovery.conf"
+    mode: '0600'
+    owner: postgres
+    group: postgres
+  become: true
+  become_user: postgres
+  when: postgres_version|int < 12
+
+- name: Update 'recovery.conf' file
+  blockinfile:
+    block: |
+       standby_mode = 'on'
+       primary_conninfo = 'host={{ hostvars[item]['ansible_facts']['default_ipv4']['address'] }} port={{ postgres_port }} user=replicator password={{ postgres_replica_pass }}'
+    path: "{{ postgres_data_directory }}/recovery.conf"
+    mode: '0600'
+  become: true
+  become_user: postgres
+  with_items: "{{ groups['MASTER_HOST'] }}"     
+  when: item in groups[cluster_name] and  postgres_version|int < 12
+
+- name: Create new 'standby.signal' file
+  copy:
+    content: ""
+    dest: "{{ postgres_data_directory }}/standby.signal"
+    mode: '0600'
+    owner: postgres
+    group: postgres
+  become: true
+  become_user: postgres
+  with_items: "{{ groups['MASTER_HOST'] }}"     
+  when: item in groups[cluster_name] and  postgres_version|int >= 12
+
+- name: Update 'postgresql.auto.conf' file
+  blockinfile:
+    block: |
+       listen_addresses = '*'
+       primary_conninfo = 'host={{ hostvars[item]['ansible_facts']['default_ipv4']['address'] }} port={{ postgres_port }} user=replicator password={{ postgres_replica_pass }}'
+    path: "{{ postgres_data_directory }}/postgresql.auto.conf"
+    mode: '0600'
+  become: true
+  become_user: postgres
+  with_items: "{{ groups['MASTER_HOST'] }}"     
+  when: item in groups[cluster_name] and  postgres_version|int >= 12
+
+- name: Start postgres service.
+  service:
+    name: "postgresql-{{ version }}"
+    state: started
+

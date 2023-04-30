@@ -1,0 +1,13 @@
+---
+# handlers file for postgresql-upgrade
+- name: Restart postgres
+  service:
+    name: "{{ postgres_service_name }}"
+    state: restarted
+    enabled: yes
+
+- name: Stop old postgres
+  service:
+    name: "{{ postgres_service_name_old }}"
+    state: stopped
+    enabled: no

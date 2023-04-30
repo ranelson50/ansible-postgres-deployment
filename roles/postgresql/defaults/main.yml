@@ -1,0 +1,7 @@
+---
+# defaults file for postgresql
+postgres_local_ip_range: '127.0.0.1/32'
+postgres_replica_user: 'replica'
+postgres_replica_pass: 'IXb56JAcmXN6wDDsvWE'
+postgres_port: '5432'
+archive_dir: "{{ postgres_data_directory }}/archive"
