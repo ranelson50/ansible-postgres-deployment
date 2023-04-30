@@ -36,21 +36,6 @@
     postgresql_info:
         filter:  "version,settings"
     register: postgres_fact_output
-
-  
-  - name: postgresql status
-    import_role:
-      name: dbaas_api_services
-      tasks_from: db_checklist_status_all.yml
-    vars:
-      task_key: "{{ ansible_hostname }}"
-      task_area: "PostgreSQL Upgrade"
-      task_id: "{{ ticket_ref }}"
-      task_status: "IN_PROGRESS"
-      task_message: "set variables"
-      standard_task_id: "{{ standard_task_id }}"
-    tags:
-    - apex_api
     
   - set_fact:
         old_version: '9.6'
@@ -64,41 +49,12 @@
         old_version: "{{ postgres_fact_output['version']['major'] }}"
     when: postgres_fact_output['version']['major'] > 9
 
-    
-  - name: postgresql status
-    import_role:
-      name: dbaas_api_services
-      tasks_from: db_checklist_status_all.yml
-    vars:
-      task_key: "{{ ansible_hostname }}"
-      task_area: "PostgreSQL Upgrade"
-      task_id: "{{ ticket_ref }}"
-      task_status: "IN_PROGRESS"
-      task_message: "stop current server"
-      standard_task_id: "{{ standard_task_id }}"
-    tags:
-    - apex_api
-
   - name: stop current server
     service: 
           name: "postgresql-{{ old_version }}"
           state: stopped
 
-  when: not fresh_install
-
-- name: postgresql status
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "PostgreSQL Insstall"
-    task_id: "{{ ticket_ref }}"
-    task_status: "IN_PROGRESS"
-    task_message: "Install dependencies"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
+    when: not fresh_install
 
 - name: Add the postgres repository (yum)
   yum_repository:
@@ -149,7 +105,7 @@
 #    update_cache: yes
 #    state: present
 
-- name: Install  postgres packages
+- name: Install postgres packages
   yum:
     name:
      - "{{ postgres_base_repo_url  }}/rhel-{{ ansible_distribution_version }}-{{  ansible_architecture }}/{{  postgres_server_package  }}"
@@ -212,40 +168,10 @@
     name: "postgresql-{{ version }}"
     state: started
 
-- name: postgresql status
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "PostgreSQL Install"
-    task_id: "{{ ticket_ref }}"
-    task_status: "SUCCESS"
-    task_message: "Postgres installation successfull"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
-
 - block:
-
-    - name: Upgrade progresql status
-      import_role:
-        name: dbaas_api_services
-        tasks_from: db_checklist_status_all.yml
-      vars:
-        task_key: "{{ ansible_hostname }}"
-        task_area: "PostgreSQL Upgrade"
-        task_id: "{{ ticket_ref }}"
-        task_status: "SUCCESS"
-        task_message: "server upgraded to specified version"
-        standard_task_id: "{{ standard_task_id }}"
-      tags:
-        - apex_api
-
     - name: send upgraded database server version to DCC API
       import_role: 
              name: postgresql-catalog
       vars:
         catalog_dest_type: "DB_CATALOG_DETAIL_UPGRADE"
-
-  when: not fresh_install
+      when: not fresh_install

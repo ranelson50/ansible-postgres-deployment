@@ -26,22 +26,6 @@
     msg: server major version must be the same 
   when:  version != '9.6' and version != installed_version
 
-
-
-- name: Patch progresql status
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "PostgreSQL Patching"
-    task_id: "{{ ticket_ref }}"
-    task_status: "IN_PROGRESS"
-    task_message: "Install Patch"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
-
 - name: install postgres rpm specific version
   set_fact:
        postgres_server_package: "postgresql{{ version | replace('.','') }}-server-{{ version  }}.{{ patch_version }}-1PGDG.rhel{{ ansible_distribution_major_version }}.{{ ansible_architecture }}.rpm"
@@ -66,20 +50,6 @@
   yum :
     name: "{{ postgres_packages }}"
     state: absent
-
-- name: Patch postgresql status
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "PostgreSQL Patching"
-    task_id: "{{ ticket_ref }}"
-    task_status: "INSTALLING PACKAGES"
-    task_message: "Install Patch"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
      
 - name: Install  postgres packages
   yum:
@@ -123,20 +93,3 @@
         name: postgresql-catalog
   vars:
     catalog_dest_type: "DB_CATALOG_DETAIL_UPGRADE"
-
-
-- name: Patch progresql status
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "PostgreSQL Patching"
-    task_id: "{{ ticket_ref }}"
-    task_status: "SUCCESS"
-    task_message: "server patched to specified version"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
-
- 

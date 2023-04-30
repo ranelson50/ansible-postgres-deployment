@@ -11,19 +11,6 @@
         - defaults.yml
 
 # tasks file for postgresql-prevalidation
-- name: host checklist post update for  provisioning validation
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "Pre Validation"
-    task_id: "{{ ticket_ref }}"
-    task_status: "STARTED"
-    task_message: "Prevalidations for Provisioning on {{ ansible_hostname }}"
-    standard_task_id: "{{ standard_task_id }}"
-  tags:
-  - apex_api
 #TODO: add  ansible_distribution precheck
 - name: generate checklist output
   set_fact:
@@ -61,54 +48,6 @@
   copy:
     dest: /tmp/{{ ansible_hostname }}_prevalidaton_result.json
     content: "{{ checklist }}"
-
-- name: host checklist post update for  provisioning validation
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "Pre Validation"
-    task_id: "{{ ticket_ref }}"
-    task_status: "FAILED"
-    task_message: " Prevalidations for Provisioning on {{ ansible_hostname }}"
-    standard_task_id: "{{ standard_task_id }}"
-  when: checklist | json_query('[?status == `FAILED`]') | length > 1
-  tags:
-  - apex_api
-
-- name: host checklist post update for  provisioning validation
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_all.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "Pre Validation"
-    task_id: "{{ ticket_ref }}"
-    task_status: "SUCCESSFUL"
-    task_message: "Prevalidations for Provisioning on {{ ansible_hostname }}"
-    standard_task_id: "{{ standard_task_id }}"
-  when: checklist | json_query('[?status == `FAILED`]') | length == 0
-  tags:
-  - apex_api
-
-
-- name: db checklist status file upload for prevalistion
-  import_role:
-    name: dbaas_api_services
-    tasks_from: db_checklist_status_file.yml
-  vars:
-    task_key: "{{ ansible_hostname }}"
-    task_area: "Pre Validation"
-    task_id: "{{ ticket_ref }}"
-    task_status: "Upload Pre Validation checklist"
-    task_message: "Prevalidations checklist {{ ansible_hostname }} "
-    file_mimetype: "text/plain"
-    record_type: "file_upload"
-    logfile_path: "/tmp/{{ ansible_hostname }}_prevalidaton_result.json"
-    standard_task_id: "{{ standard_task_id_val }}"
-  tags:
-  - apex_api
 
 - name: Check for Precheck Failures
   fail:

@@ -7,4 +7,3 @@
     ha_type: 'PostGreSQL SR'
   roles:
   # - postgresql-catalog
-  - api_catalog

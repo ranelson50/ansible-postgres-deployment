@@ -6,4 +6,3 @@
     catalog_dest_type: HOST_CATALOG_TBL
   roles:
   # - postgresql-catalog
-  - api_catalog
