@@ -1,4 +1,0 @@
----
-# defaults file for postgresql-backup-db
-local_path: /tmp/
-s3_path: /postgres/{{ ansible_date_time.date }}-{{ ansible_date_time.hour }}-{{ ansible_date_time.minute }}/

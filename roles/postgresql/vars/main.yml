@@ -1,3 +1,0 @@
----
-postgres_url: 'https://yum.postgresql.org/9.6/redhat/rhel-7-x86_64/pgdg-centos96-9.6-3.noarch.rpm'
-postgres_local_ip_range: '127.0.0.1/32'

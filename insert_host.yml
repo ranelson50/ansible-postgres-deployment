@@ -1,9 +1,0 @@
----
-- name: insert host
-  hosts: '{{ host }}'
-  become: true
-  vars:
-    catalog_dest_type: HOST_CATALOG_TBL
-  roles:
-  # - postgresql-catalog
-  - api_catalog
