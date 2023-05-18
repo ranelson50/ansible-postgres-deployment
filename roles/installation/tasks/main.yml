@@ -1,0 +1,50 @@
+---
+- name: Install prerequisites
+  become: true
+  dnf:
+    name: 
+      - python3-psycopg2
+      - postgresql-server
+    state: latest
+
+- name: Check to see if there is anything in the PostgreSQL folder
+  become: true
+  find:
+    paths: '{{ postgresql_data_directory }}'
+  register: pg_folder
+
+- name: If folder is empty, initialize the DB
+  become: true
+  shell:
+    cmd: postgresql-setup --initdb
+  when: pg_folder.matched == 0
+
+- name: change permission on data directory
+  become: true
+  file: 
+      path: "{{ postgresql_data_directory }}"
+      owner: postgres
+      group: postgres
+      mode: '700'
+      state:  directory
+
+- name: Enable and start the PostgreSQL service
+  become: true
+  service:
+    enabled: true
+    state: started
+    name: postgresql.service
+
+- name: Set the 'listen_address' parameter to all in postgresql.conf
+  become: true
+  lineinfile:
+    path: '{{ postgresql_config_file }}'
+    search_string: "#listen_addresses = 'localhost'"
+    line: "listen_addresses = '*'"
+    state: present
+
+- name: Restart the PostgreSQL service
+  become: true
+  service:
+    state: restarted
+    name: postgresql.service

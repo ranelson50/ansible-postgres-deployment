@@ -1,0 +1,21 @@
+---
+- name: Run the PostgreSQL installation role on all hosts
+  hosts: all
+  vars_files:
+    - vars/main.yml
+  roles:
+    - installation
+
+- name: Run master DB configuration
+  hosts: masters
+  vars_files:
+    - vars/main.yml
+  roles:
+    - master_config
+
+- name: Run replica DB configuration
+  hosts: replicas
+  vars_files:
+    - vars/main.yml
+  roles:
+    - replica_config

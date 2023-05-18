@@ -1,0 +1,55 @@
+---
+- name: Stop postgreSQL service
+  become: true
+  service:
+    name: postgresql.service
+    state: stopped
+
+- name: Delete the data directory created during installation
+  become: true
+  file: 
+      path: "{{ postgresql_data_directory }}"
+      state:  absent
+
+- name: create a fresh data directory
+  become: true
+  file: 
+      path: "{{ postgresql_data_directory }}"
+      owner: postgres
+      group: postgres
+      mode: '700'
+      state:  directory
+
+- name: Perform base backup from master
+  become: true
+  become_user: postgres
+  shell: "PGPASSWORD={{ postgresql_replica_password }} /usr/bin/pg_basebackup -h {{ hostvars[item]['ansible_facts']['default_ipv4']['address'] }}  -U replicator -p 5432 -D {{ postgresql_data_directory }} --slot={{ inventory_hostname | lower | replace('-','_') }} -X stream -P"
+  changed_when: false
+  with_items: "{{ groups['masters'] }}"     
+  when: item in "{{ groups['databases'] }}" 
+
+
+- name: Edit 'postgresql.conf' file on the replica server
+  become: true
+  lineinfile:
+    dest: "{{ postgresql_config_file }}"
+    regexp: '^hot_standby =.*'
+    line: 'hot_standby = on'
+
+- name: Update 'postgresql.conf' file
+  become: true
+  become_user: postgres
+  blockinfile:
+    block: |
+       listen_addresses = '*'
+       primary_conninfo = 'host={{ hostvars[item]['ansible_facts']['default_ipv4']['address'] }} port=5432 user=replicator password={{ postgresql_replica_password }}'
+    path: "{{ postgresql_data_directory }}/postgresql.conf"
+    mode: '0600'
+  with_items: "{{ groups['masters'] }}"     
+  when: item in "{{ groups['databases'] }}"
+
+- name: Start postgres service.
+  become: true
+  service:
+    state: started
+    name: postgresql.service
