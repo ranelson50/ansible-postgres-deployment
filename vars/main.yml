@@ -1,0 +1,3 @@
+---
+postgresql_data_directory: '/var/lib/pgsql/data'
+postgresql_replica_password: STRONGPASSWORD # Provide a password for the replicator account here. 

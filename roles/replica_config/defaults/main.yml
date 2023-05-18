@@ -1,0 +1,4 @@
+---
+postgresql_data_directory: '/var/lib/pgsql/data'
+postgresql_config_file: '/var/lib/pgsql/data/postgresql.conf'
+postgresql_hba_file: '/var/lib/pgsql/data/pg_hba.conf'
