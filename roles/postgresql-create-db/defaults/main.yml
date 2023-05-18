@@ -1,5 +1,0 @@
----
-# defaults file for postgresql-create-db
-db_encoding: 'UTF8'
-db_collate: 'en_US.UTF-8'
-db_ctype: 'en_US.UTF-8'

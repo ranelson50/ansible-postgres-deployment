@@ -1,8 +1,0 @@
----
-# tasks file for api_catalog
-- name: "Get postgres settings"
-  become: true
-  become_user: postgres
-  postgresql_info:
-      filter:  "settings"
-  register: postgres_settings

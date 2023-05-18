@@ -1,9 +1,0 @@
----
-- name: insert HA
-  hosts: '{{ host }}'
-  become: true
-  vars:
-    catalog_dest_type: HA_MAPPING_TBL
-    ha_type: 'PostGreSQL SR'
-  roles:
-  # - postgresql-catalog

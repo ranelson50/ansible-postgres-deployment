@@ -1,6 +1,0 @@
----
-- name: postgresql upgrade
-  hosts: '{{ host }}'
-  become: true
-  roles:
-    -  postgresql-upgrade
