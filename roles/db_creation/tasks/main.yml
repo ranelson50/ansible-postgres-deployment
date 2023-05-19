@@ -1,0 +1,16 @@
+---
+- name: Create databases
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ item }}"
+    encoding: "{{ db_encoding }}"
+    lc_collate: "{{ db_collate }}"
+    lc_ctype: "{{ db_ctype }}"
+  register: create_result
+  loop: "{{ postgresql_databases }}"
+  when: inventory_hostname not in groups['replicas']
+  # rescue:
+  #   - name: Instance Creation Failed
+  #     fail:
+  #       msg: Creation of databases failed
