@@ -1,3 +1,6 @@
 ---
+postgresql_databases:
+  - cntlr
+  - pah
 postgresql_data_directory: '/var/lib/pgsql/data'
-postgresql_replica_password: STRONGPASSWORD # Provide a password for the replicator account here. 
+postgresql_replica_password: STRONGPASSWORD # TODO: Provide a password for the replicator account here. 
